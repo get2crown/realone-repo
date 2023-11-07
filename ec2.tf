@@ -1,7 +1,7 @@
 # configured aws provider with proper credentials
 provider "aws" {
-  region    = "us-east-1"
-  profile   = "yusuf"   #change this
+  region    = "us-west-1"
+  profile   = "Hameed"
 }
 
 
@@ -29,12 +29,20 @@ resource "aws_default_subnet" "default_az1" {
 
 
 # create security group for the ec2 instance
-resource "aws_security_group" "ec2_security_group4" {
-  name        = "ec2 security group4"
+resource "aws_security_group" "ec2_security_group_sonarqube" {
+  name        = "ec2 security group_sonarqube"
   description = "allow access on ports 8080 and 22"
   vpc_id      = aws_default_vpc.default_vpc.id
 
   # allow access on port 8080
+  ingress {
+    description      = "sonarqube access"
+    from_port        = 9000
+    to_port          = 9000
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
   ingress {
     description      = "http proxy access"
     from_port        = 8080
@@ -50,24 +58,7 @@ resource "aws_security_group" "ec2_security_group4" {
     to_port          = 22
     protocol         = "tcp"
     cidr_blocks      = ["0.0.0.0/0"]
-  } 
-  ingress {
-    description      = "http access"
-    from_port        = 80
-    to_port          = 80
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
   }
-
-  
-   ingress {
-    description      = "https access"
-    from_port        = 443
-    to_port          = 443
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
-
 
   egress {
     from_port        = 0
@@ -77,7 +68,7 @@ resource "aws_security_group" "ec2_security_group4" {
   }
 
   tags   = {
-    Name = "jenkins server security group"
+    Name = "sonarqube server security group"
   }
 }
 
@@ -100,23 +91,21 @@ data "aws_ami" "ubuntu" {
     owners = ["099720109477"]
 }
 
-# launch the ec2 instance
+# launch the ec2 instance and install website
 resource "aws_instance" "ec2_instance" {
   ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "t2.small"
+  instance_type          = "t2.medium"
   subnet_id              = aws_default_subnet.default_az1.id
-  vpc_security_group_ids = [aws_security_group.ec2_security_group4.id]
-  key_name               = "devopskeypair"   #change this
-  user_data = "${file("install_jenkins.sh")}"
+  vpc_security_group_ids = [aws_security_group.ec2_security_group_sonarqube.id]
+  key_name               = "NC_kp"
+  user_data = "${file("install_sonarqube1.sh")}"
 
   tags = {
-    Name = "jenkins_server"
+    Name = "sonarqube_server"
   }
 }
 
-
-
-# print the url of the jenkins server
+# print the url of the sonarqube server
 output "website_url" {
-  value     = join("", ["http://", aws_instance.ec2_instance.public_ip, ":", "8080"])
+  value     = join ("", ["http://", aws_instance.ec2_instance.public_dns, ":", "9000"])
 }
